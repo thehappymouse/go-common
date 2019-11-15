@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/magiconair/properties/assert"
 	"testing"
 	"time"
 )
@@ -35,23 +34,4 @@ func TestWorkDayAdd(t *testing.T) {
 		target := WorkDayAdd(i, startDate)
 		fmt.Printf("%d 个工作日后: %s \n", i, target.Format("2006-01-02 Monday"))
 	}
-}
-
-func TestUssNoGenerate(t *testing.T) {
-	last := UssNoGenerate("")
-	for i := 0; i < 40; i++ {
-		fmt.Println(last)
-		last = UssNoGenerate(last)
-	}
-
-}
-
-func TestBHex2Num(t *testing.T) {
-	assert.Equal(t, BHex2Num("1E6K", 36), 65036)
-	assert.Equal(t, BHex2Num("FE0C", 16), 65036)
-
-	assert.Equal(t, NumToBHex(65036, 36), "1E6K")
-	assert.Equal(t, NumToBHex(65036, 16), "FE0C")
-
-	fmt.Println(BHex2Num("7H", 16))
 }
