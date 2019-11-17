@@ -1,37 +1,44 @@
-# golang-utils
+# github.com/thehappymouse/go-utils
 
 #### 项目介绍
-dali.cc/utils 工具类
+集工作、学习中的的通用工具方法
 
-#### 软件架构
-软件架构说明
-
-
-#### 安装教程
-
-1. xxxx
-2. xxxx
-3. xxxx
 
 #### 使用说明
 
-1. xxxx
-2. xxxx
-3. xxxx
+> 方式一
+```
+# go get -u github.com/thehappymouse/go-util
 
-#### 参与贡献
+或者使用 mod 
 
-1. Fork 本项目
-2. 新建 Feat_xxx 分支
-3. 提交代码
-4. 新建 Pull Request
+require (
+	github.com/magiconair/properties v1.8.1
+	github.com/rs/zerolog v1.14.3
+	github.com/thehappymouse/go-utils v0.0.2
+)
 
+# 代码文件
+import "github.com/thehappymouse/go-utils"
+# 命令行打印
+utils.ZeroConsoleLog()
+```
+> 方试二
+```go.mod
+# cat go.mod
+module modulename
 
-#### 码云特技
+go 1.12
 
-1. 使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2. 码云官方博客 [blog.gitee.com](https://blog.gitee.com)
-3. 你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解码云上的优秀开源项目
-4. [GVP](https://gitee.com/gvp) 全称是码云最有价值开源项目，是码云综合评定出的优秀开源项目
-5. 码云官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6. 码云封面人物是一档用来展示码云会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+require (
+	github.com/magiconair/properties v1.8.1
+	github.com/rs/zerolog v1.14.3
+	github.com/thehappymouse/go-utils v0.0.2
+)
+
+```
+
+#### 内容简述
+* 36进制
+* zero.log 命令行输出格式化
+* http 下载文件
