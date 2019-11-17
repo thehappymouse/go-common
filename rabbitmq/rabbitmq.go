@@ -125,7 +125,7 @@ func (mq *RabbitMQ) listen(receiver Receiver) {
 	log.Info().Msgf("队列已绑定:[%s][%s][%s]", mq.exchangeName, queueName, routerKey)
 
 	// 获取消费通道 todo 功效
-	err = mq.channel.Qos(1, 0, true) // 确保rabbitmq会一个一个发消息
+	err = mq.channel.Qos(receiver.Qos(), 0, true) // 确保rabbitmq会一个一个发消息
 	if err != nil {
 		receiver.OnError(fmt.Errorf("设置 Qos 失败: %s", queueName, err.Error()))
 	}
@@ -134,7 +134,7 @@ func (mq *RabbitMQ) listen(receiver Receiver) {
 	if nil != err {
 		receiver.OnError(fmt.Errorf("获取队列 %s 的消费通道失败: %s", queueName, err.Error()))
 	}
-	log.Warn().Msg("[*] Waiting for messages. To exit press CTRL+C\n")
+	log.Warn().Msgf("[*][%s] Waiting for messages\n", queueName)
 	// 使用callback消费数据
 	for msg := range messages {
 		//log.Debug().Msgf("[*] receiver new msg:%s", msg.Body)
