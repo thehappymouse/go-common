@@ -1,13 +1,11 @@
 package utils
 
 import (
-	"encoding/csv"
+	"fmt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-	"io/ioutil"
-	"os"
+	"regexp"
 	"strconv"
-	"github.com/360EntSecGroup-Skylar/excelize"
 	"strings"
 )
 
@@ -22,46 +20,20 @@ func GetMoney(v string) string {
 	return p.Sprintf("%.2f", v2)
 }
 
-// 读取批定的csv文件
-func LoadCsvData(source string) ([][]string, error) {
-	cntb,err := ioutil.ReadFile(source)
-	if err != nil {
-		return nil, err
+
+// unicode 字符 转中文
+func Unicode2Chinese(textUnquoted string) (string, error) {
+	exp1 := regexp.MustCompile(`\\u([a-z0-9A-Z]{1,4})`)
+	result1 := exp1.FindAllStringSubmatch(textUnquoted, -1)
+	if len(result1) == 0 {
+		return textUnquoted, nil
 	}
-	r2 := csv.NewReader(strings.NewReader(string(cntb)))
-	return r2.ReadAll()
-}
-// 写入数据到指定的csv文件
-func Write2CsvFile(records [][]string, filename string) error  {
-	nf, err := os.Create(filename)
-	if err != nil {
-		return err
+	for _, s := range result1 {
+		temp, err := strconv.ParseInt(s[1], 16, 32)
+		if err != nil {
+			return textUnquoted, err
+		}
+		textUnquoted = strings.Replace(textUnquoted, s[0], fmt.Sprintf("%c", temp), -1)
 	}
-	defer nf.Close()
-
-	nw := csv.NewWriter(nf)
-	err = nw.WriteAll(records)
-	if err != nil {
-		return err
-	}
-	nw.Flush()
-	return nil
-}
-
-// 读取Excel指定sheet的数据
-func LoadExcel(xlsxFile string, sheet string) [][]string {
-	xlsx, err := excelize.OpenFile(xlsxFile)
-	CheckError(err)
-	rows := xlsx.GetRows(sheet)
-	rows = rows[1:]
-	return rows
-}
-
-func LoadSheet1(xlsxFile string) [][]string {
-
-	xlsx, err := excelize.OpenFile(xlsxFile)
-	CheckError(err)
-	sheet := xlsx.GetSheetName(1)
-	rows := xlsx.GetRows(sheet)
-	return rows
+	return textUnquoted, nil
 }
