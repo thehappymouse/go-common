@@ -1,13 +1,16 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/rs/zerolog/log"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"sync"
 )
 var (
@@ -87,4 +90,26 @@ func DownLoadImgToDir(src string, localDir string) (filename string, err error) 
 		log.Fatal().Msgf("写入磁盘【%s】，请参考:%s", localPath, err)
 	}
 	return filename, nil
+}
+
+func ReadLine(fileName string, result chan string) error {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	buf := bufio.NewReader(f)
+	for {
+		line, err := buf.ReadString('\n')
+		line = strings.TrimSpace(line)
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		result <- line
+	}
+	return nil
 }
