@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 )
+
 var (
 	//记录已下载的图片，减少IO请次
 	mu               sync.RWMutex
@@ -42,7 +43,6 @@ func IsDirExists(path string) bool {
 	panic("not reached")
 }
 
-
 // 下载文件到指定的目录
 func DownLoadImgToDir(src string, localDir string) (filename string, err error) {
 	mu.RLock()
@@ -54,7 +54,7 @@ func DownLoadImgToDir(src string, localDir string) (filename string, err error) 
 	mu.Lock()
 	downloadedImages[src] = true
 	mu.Unlock()
-	u, _:=url.Parse(src)
+	u, _ := url.Parse(src)
 	filename = path.Base(u.Path)
 	localPath := fmt.Sprintf("%s/%s", localDir, filename)
 
@@ -92,7 +92,8 @@ func DownLoadImgToDir(src string, localDir string) (filename string, err error) 
 	return filename, nil
 }
 
-func ReadLine(fileName string, result chan string) error {
+// 按行读取文件 通过 chanel 返回
+func ReadLine(fileName string, result chan<- string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -112,4 +113,52 @@ func ReadLine(fileName string, result chan string) error {
 		result <- line
 	}
 	return nil
+}
+
+// 按行读取文件 通过 chanel 返回
+func ReadLineByFn(fileName string, cb func(s string)) error {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	buf := bufio.NewReader(f)
+	for {
+		line, err := buf.ReadString('\n')
+		line = strings.TrimSpace(line)
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		cb(line)
+	}
+	return nil
+}
+// 通过文件路径复制文件
+func CopyFile(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
 }
