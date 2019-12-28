@@ -120,7 +120,7 @@ func HttpGetFileWithHeader(url string, headeers map[string]string, local string)
 		return err
 	}
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("request error: %d:%s", res.StatusCode, res.Status)
+		return fmt.Errorf("request %s error: %s", url, res.Status)
 	}
 	defer res.Body.Close()
 	file, err := os.Create(local)
