@@ -79,8 +79,9 @@ func HttpGetURL(url string) (body string, code int, err error) {
 func HttpGetFile(url, local string) (err error) {
 	return HttpGetFileWithHeader(url, nil, local)
 }
+
 // 下载Url到指定目录
-func HttpGetFileToDir(url, dir string, headers map[string]string) (error, string)  {
+func HttpGetFileToDir(url, dir string, headers map[string]string) (error, string) {
 	if !IsDirExists(dir) {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
@@ -91,30 +92,35 @@ func HttpGetFileToDir(url, dir string, headers map[string]string) (error, string
 	err := HttpGetFileWithHeader(url, headers, localPath)
 	return err, localPath
 }
+
 // 下载文件，可以追加头
 func HttpGetFileWithHeader(url string, headeers map[string]string, local string) error {
-	log.Warn().Msgf("%s download start", url)
+	log.Debug().Msgf("%s download start", url)
 	// todo 应检查大小
 	if IsFileExists(local) {
-		log.Debug().Msgf("[%s]本地已存在, 无需下载", url)
+		log.Debug().Msgf("[%s]貌似本地文件已存在, 无需下载", url)
 		return nil
 	}
 	client := &http.Client{}
-	reqest, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", url, nil)
 
 	//增加header选项
 	for key, value := range headeers {
-		reqest.Header.Add(key, value)
+		request.Header.Add(key, value)
 	}
 
 	if err != nil {
 		panic(err)
 	}
+
 	//处理返回结果
-	res, err := client.Do(reqest)
+	res, err := client.Do(request)
 
 	if err != nil {
 		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("request error: %d:%s", res.StatusCode, res.Status)
 	}
 	defer res.Body.Close()
 	file, err := os.Create(local)
