@@ -109,10 +109,6 @@ func HttpGetFileWithHeader(url string, headeers map[string]string, local string)
 		request.Header.Add(key, value)
 	}
 
-	if err != nil {
-		panic(err)
-	}
-
 	//处理返回结果
 	res, err := client.Do(request)
 
