@@ -13,39 +13,33 @@ type RabbitMQ struct {
 	wg            sync.WaitGroup
 	channel       *amqp.Channel
 	connectString string //连接字符串
-	exchangeName  string // exchange的名称
-	exchangeType  string // exchange的类型
-	receivers     []Receiver
+	qos           int
+
+	receivers []Receiver
 }
 
 // New 创建一个新的操作RabbitMQ的对象
-func New(exchange, exchangeType, connect string) *RabbitMQ {
+func New(connect string, qos int) *RabbitMQ {
 	// 这里可以根据自己的需要去定义
 	return &RabbitMQ{
-		exchangeName:  exchange,
-		exchangeType:  exchangeType,
 		connectString: connect,
+		qos:           qos,
 	}
-	//amqp.ExchangeTopic
 }
 
-// prepareExchange 声明交换机
-func (mq *RabbitMQ) prepareExchange() error {
+// 声明交换机 除了名称，其它全部内定
+func (mq *RabbitMQ) prepareExchange(changeName string) error {
 	// 申明Exchange
 	err := mq.channel.ExchangeDeclare(
-		mq.exchangeName, // exchange
-		mq.exchangeType, // type
-		true,            // durable 持久化
-		false,           // autoDelete 自动删除
-		false,           // internal
-		false,           // noWait  异步的
-		nil,             // args
+		changeName,
+		amqp.ExchangeTopic,
+		true,  // durable 持久化
+		false, // autoDelete 自动删除
+		false, // internal
+		false, // noWait  异步的
+		nil,   // args
 	)
-
-	if nil != err {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Start 启动Rabbitmq的客户端
@@ -80,12 +74,17 @@ func (mq *RabbitMQ) run() {
 	}
 	defer mq.channel.Close()
 
-	// 初始化Exchange
-	mq.prepareExchange()
+	// 设置该通道并发10个消息
+	err = mq.channel.Qos(mq.qos, 0, true) // 确保rabbitmq会一个一个发消息
+	if err != nil {
+		log.Error().Msgf("设置 QOS [%d] 失败喽，将重连", mq.qos, err)
+	}
+
 	log.Info().Msgf("[%s]已连接", mq.connectString)
 
 	for _, receiver := range mq.receivers {
 		mq.wg.Add(1)
+
 		go mq.listen(receiver) // 每个接收者单独启动一个goroutine用来初始化queue并接收消息
 	}
 
@@ -101,40 +100,42 @@ func (mq *RabbitMQ) listen(receiver Receiver) {
 	defer mq.wg.Done()
 
 	// 这里获取每个接收者需要监听的队列和路由
-	queueName := receiver.QueueName()
-	routerKey := receiver.RouterKey()
+	queueName := receiver.GetBindInfo().QueueName
+	routerKey := receiver.GetBindInfo().RouterKey
+	exchangeName := receiver.GetBindInfo().Exchange
+
+	// 初始化交换机
+	err := mq.prepareExchange(exchangeName)
+	if nil != err {
+		receiver.OnError(fmt.Errorf("初始化交换机[%s]失败: %s", exchangeName, err.Error()))
+	}
 
 	// 申明队列 todo 默认开始持久化了
-	_, err := mq.channel.QueueDeclare(queueName, true, false, false, false, nil)
+	_, err = mq.channel.QueueDeclare(queueName, true, false, false, false, nil)
 	if nil != err {
 		// 当队列初始化失败的时候，需要告诉这个接收者相应的错误
-		receiver.OnError(fmt.Errorf("初始化队列 %s 失败: %s", queueName, err.Error()))
+		receiver.OnError(fmt.Errorf("初始化队列[%s]失败: %s", queueName, err.Error()))
 	}
 
 	// 将Queue绑定到Exchange上去
 	err = mq.channel.QueueBind(
-		queueName,       // queue name
-		routerKey,       // routing key
-		mq.exchangeName, // exchange
-		false,           // no-wait
+		queueName,    // queue name
+		routerKey,    // routing key
+		exchangeName, // exchange
+		false,        // no-wait
 		nil,
 	)
 	if nil != err {
 		receiver.OnError(fmt.Errorf("绑定队列 [%s - %s] 到交换机失败: %s", queueName, routerKey, err.Error()))
 	}
-	log.Info().Msgf("队列已绑定:[%s][%s][%s]", mq.exchangeName, queueName, routerKey)
+	log.Info().Msgf("队列已绑定:[%s]<---[%s][%s]", queueName, exchangeName, routerKey)
 
-	// 获取消费通道 todo 功效
-	err = mq.channel.Qos(receiver.Qos(), 0, true) // 确保rabbitmq会一个一个发消息
-	if err != nil {
-		receiver.OnError(fmt.Errorf("设置 Qos 失败: %s", queueName, err.Error()))
-	}
 	// consumerTag 为空
 	messages, err := mq.channel.Consume(queueName, "", false, false, false, false, nil)
 	if nil != err {
 		receiver.OnError(fmt.Errorf("获取队列 %s 的消费通道失败: %s", queueName, err.Error()))
 	}
-	log.Warn().Msgf("[*][%s] Waiting for messages\n", queueName)
+	log.Warn().Msgf("[*][%s] Waiting for messages", queueName)
 	// 使用callback消费数据
 	for msg := range messages {
 		//log.Debug().Msgf("[*] receiver new msg:%s", msg.Body)
