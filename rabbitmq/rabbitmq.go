@@ -79,12 +79,11 @@ func (mq *RabbitMQ) run() {
 	if err != nil {
 		log.Error().Msgf("设置 QOS [%d] 失败喽，将重连", mq.qos, err)
 	}
-
-	log.Info().Msgf("[%s]已连接", mq.connectString)
+	log.Info().Msg("已连接")
 
 	for _, receiver := range mq.receivers {
 		mq.wg.Add(1)
-
+		time.Sleep(time.Second)
 		go mq.listen(receiver) // 每个接收者单独启动一个goroutine用来初始化queue并接收消息
 	}
 
@@ -98,7 +97,6 @@ func (mq *RabbitMQ) run() {
 // 该方法负责从每一个接收者监听的队列中获取数据，并负责重试
 func (mq *RabbitMQ) listen(receiver Receiver) {
 	defer mq.wg.Done()
-
 	// 这里获取每个接收者需要监听的队列和路由
 	queueName := receiver.GetBindInfo().QueueName
 	routerKey := receiver.GetBindInfo().RouterKey
@@ -128,14 +126,13 @@ func (mq *RabbitMQ) listen(receiver Receiver) {
 	if nil != err {
 		receiver.OnError(fmt.Errorf("绑定队列 [%s - %s] 到交换机失败: %s", queueName, routerKey, err.Error()))
 	}
-	log.Info().Msgf("队列已绑定:[%s]<---[%s][%s]", queueName, exchangeName, routerKey)
 
 	// consumerTag 为空
 	messages, err := mq.channel.Consume(queueName, "", false, false, false, false, nil)
 	if nil != err {
 		receiver.OnError(fmt.Errorf("获取队列 %s 的消费通道失败: %s", queueName, err.Error()))
 	}
-	log.Warn().Msgf("[*][%s] Waiting for messages", queueName)
+	log.Warn().Msgf("Waiting for [%s][%s] messages, by [%s]", exchangeName, routerKey, queueName)
 	// 使用callback消费数据
 	for msg := range messages {
 		//log.Debug().Msgf("[*] receiver new msg:%s", msg.Body)
@@ -146,7 +143,7 @@ func (mq *RabbitMQ) listen(receiver Receiver) {
 		if !receiver.OnReceive(msg.Body) {
 			log.Warn().Msg("receiver 数据处理失败，重启程序时将重试")
 		} else {
-			// 确认收到本条消息, multiple必须为false
+			//确认收到本条消息, multiple必须为false
 			msg.Ack(false)
 		}
 	}
